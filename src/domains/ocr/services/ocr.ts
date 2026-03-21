@@ -205,12 +205,10 @@ export const ocrService = {
                     x1: Math.max(0, w.bbox.x1 + box.x0 - PADDING),
                     y1: Math.max(0, w.bbox.y1 + box.y0 - PADDING)
                 },
-                confidence: w.confidence
+                confidence: w.confidence,
+                vertical: isVerticalLanguage(lang) ? true : undefined
             }));
 
-            if (isVerticalLanguage(lang)) {
-                adjustedWords.forEach(w => { w.vertical = true })
-            }
             allWords.push(...adjustedWords);
 
             // Append to Debug Store (Merged Layer)
