@@ -135,6 +135,8 @@
     "languageShort": {
       "chi_tra": "ZH-TW",
       "chi_sim": "ZH",
+      "chi_tra_vert": "ZH-TW↕",
+      "chi_sim_vert": "ZH↕",
       "eng": "EN",
       "jpn": "JP",
       "kor": "KR",
@@ -151,6 +153,8 @@
     "languageLabel": {
       "chi_tra": "Chinois traditionnel (chi_tra)",
       "chi_sim": "Chinois simplifié (chi_sim)",
+      "chi_tra_vert": "Chinois traditionnel vertical (chi_tra_vert)",
+      "chi_sim_vert": "Chinois simplifié vertical (chi_sim_vert)",
       "eng": "Anglais (eng)",
       "jpn": "Japonais (jpn)",
       "kor": "Coréen (kor)",

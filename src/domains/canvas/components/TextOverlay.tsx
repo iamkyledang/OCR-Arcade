@@ -22,6 +22,7 @@ export interface TextFormatting {
   backgroundColor?: string
   bold: boolean
   italic: boolean
+  writingMode?: 'horizontal-tb' | 'vertical-rl'
 }
 
 interface TextOverlayProps {
@@ -430,7 +431,8 @@ function TextBoxComponent({
             fontFamily: box.formatting.fontFamily,
             color: box.formatting.color,
             fontWeight: box.formatting.bold ? 'bold' : 'normal',
-            fontStyle: box.formatting.italic ? 'italic' : 'normal'
+            fontStyle: box.formatting.italic ? 'italic' : 'normal',
+            writingMode: box.formatting.writingMode ?? 'horizontal-tb'
           }}
         />
       ) : (
@@ -443,7 +445,8 @@ function TextBoxComponent({
             fontWeight: box.formatting.bold ? 'bold' : 'normal',
             fontStyle: box.formatting.italic ? 'italic' : 'normal',
             lineHeight: 1.2,
-            wordBreak: 'break-all'
+            wordBreak: box.formatting.writingMode === 'vertical-rl' ? 'normal' : 'break-all',
+            writingMode: box.formatting.writingMode ?? 'horizontal-tb'
           }}
         >
           {box.text}

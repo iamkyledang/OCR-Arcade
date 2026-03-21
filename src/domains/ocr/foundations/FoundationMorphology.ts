@@ -15,7 +15,7 @@ export class FoundationMorphology implements IOcrFoundation {
     name = "Morphological Dilation";
     description = "Smears text pixels together to form blocks using morphological operations.";
 
-    async detect(imageData: ImageData): Promise<BBox[]> {
+    async detect(imageData: ImageData, vertical = false): Promise<BBox[]> {
         const width = imageData.width;
         const height = imageData.height;
         const data = imageData.data;
@@ -38,8 +38,14 @@ export class FoundationMorphology implements IOcrFoundation {
         // 標準公式: kernelSize 正比於解析度，除以一個基準值
         const baseResolution = 1000; // 基準解析度
         const scaleFactor = Math.max(width, height) / baseResolution;
-        const kernelX = Math.max(5, Math.min(20, Math.round(8 * scaleFactor))); // 水平黏合
-        const kernelY = Math.max(2, Math.min(6, Math.round(2 * scaleFactor)));  // 垂直黏合
+        // 直排模式：kX 窄（不跨欄）、kY 寬（連接同欄文字）
+        // 橫排模式：kX 寬（連接同行文字）、kY 窄（不跨行）
+        const kernelX = vertical
+            ? Math.max(2, Math.min(6, Math.round(2 * scaleFactor)))   // 直排：窄水平
+            : Math.max(5, Math.min(20, Math.round(8 * scaleFactor)));  // 橫排：寬水平
+        const kernelY = vertical
+            ? Math.max(5, Math.min(20, Math.round(8 * scaleFactor)))   // 直排：寬垂直
+            : Math.max(2, Math.min(6, Math.round(2 * scaleFactor)));   // 橫排：窄垂直
 
         const dilatedMap = this.dilate(binaryMap, width, height, kernelX, kernelY);
 

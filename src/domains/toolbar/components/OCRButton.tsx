@@ -6,6 +6,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
@@ -26,6 +27,8 @@ export const OCRButton: React.FC<OCRButtonProps> = ({
   const languageOptions = useMemo<Array<{ value: OCRLanguage; short: string; label: string }>>(() => ([
     { value: 'chi_tra', short: t('ocr.languageShort.chi_tra'), label: t('ocr.languageLabel.chi_tra') },
     { value: 'chi_sim', short: t('ocr.languageShort.chi_sim'), label: t('ocr.languageLabel.chi_sim') },
+    { value: 'chi_tra_vert', short: t('ocr.languageShort.chi_tra_vert'), label: t('ocr.languageLabel.chi_tra_vert') },
+    { value: 'chi_sim_vert', short: t('ocr.languageShort.chi_sim_vert'), label: t('ocr.languageLabel.chi_sim_vert') },
     { value: 'eng', short: t('ocr.languageShort.eng'), label: t('ocr.languageLabel.eng') },
     { value: 'jpn', short: t('ocr.languageShort.jpn'), label: t('ocr.languageLabel.jpn') },
     { value: 'kor', short: t('ocr.languageShort.kor'), label: t('ocr.languageLabel.kor') },
@@ -170,19 +173,23 @@ export const OCRButton: React.FC<OCRButtonProps> = ({
             <ChevronDown size={14} className={status === 'processing' ? 'opacity-50' : ''} />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="mt-1 w-[100px] max-h-60 overflow-y-auto">
-          {languageOptions.map((option) => {
+        <DropdownMenuContent align="start" className="mt-1 w-[180px] max-h-60 overflow-y-auto">
+          {languageOptions.map((option, index) => {
             const cleanLabel = option.label.replace(/\s*\([^)]*\)\s*/g, '').trim();
+            const isFirstVert = option.value === 'chi_tra_vert';
             return (
-            <DropdownMenuItem
-              key={option.value}
-              onClick={() => onLanguageChange?.(option.value)}
-              className="flex items-center justify-between gap-2 cursor-pointer"
-            >
-              <span className="truncate">{cleanLabel}</span>
-              <span className="text-[10px] text-slate-400">{option.short}</span>
-              {selectedLanguage === option.value && <Check size={14} />}
-            </DropdownMenuItem>
+            <React.Fragment key={option.value}>
+              {isFirstVert && <DropdownMenuSeparator />}
+              <DropdownMenuItem
+                onClick={() => onLanguageChange?.(option.value)}
+                className="flex items-center justify-between gap-2 cursor-pointer"
+                data-index={index}
+              >
+                <span className="truncate">{cleanLabel}</span>
+                <span className="text-[10px] text-slate-400 shrink-0">{option.short}</span>
+                {selectedLanguage === option.value && <Check size={14} className="shrink-0" />}
+              </DropdownMenuItem>
+            </React.Fragment>
           )})}
         </DropdownMenuContent>
       </DropdownMenu>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/shared/lib/utils'
 
@@ -37,20 +38,33 @@ export function LanguageToggle({ className, variant = 'default' }: LanguageToggl
   const { i18n, t } = useTranslation()
   const current = i18n.resolvedLanguage || i18n.language
   const [open, setOpen] = useState(false)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const shortLabel = languageShortLabels[current] ?? current
   const options = useMemo(() => languageOptions.map((opt) => ({
     ...opt,
     label: t(opt.key)
   })), [t])
 
+  const handleOpen = () => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      setDropdownPos({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      })
+    }
+    setOpen(prev => !prev)
+  }
+
   useEffect(() => {
     if (variant !== 'compact') return
     const handleClickOutside = (event: MouseEvent) => {
-      if (!containerRef.current) return
-      if (!containerRef.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
+      const target = event.target as Node
+      if (containerRef.current?.contains(target)) return
+      if (dropdownRef.current?.contains(target)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -72,14 +86,18 @@ export function LanguageToggle({ className, variant = 'default' }: LanguageToggl
         <button
           type="button"
           className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-slate-900 dark:text-white"
-          onClick={() => setOpen((prev) => !prev)}
+          onClick={handleOpen}
           aria-label={t('language.label')}
         >
           <span className="truncate max-w-[60px]">{shortLabel}</span>
           <span className="text-[10px] text-foreground/70">▾</span>
         </button>
-        {open && (
-          <div className="absolute right-0 top-full mt-2 z-50 w-44 max-h-60 overflow-y-auto bg-card border-2 border-border shadow-[4px_4px_0_rgba(2,6,23,0.45)]">
+        {open && createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed z-[9999] w-44 max-h-60 overflow-y-auto bg-card border-2 border-border shadow-[4px_4px_0_rgba(2,6,23,0.45)]"
+            style={{ top: dropdownPos.top, right: dropdownPos.right }}
+          >
             {options.map((opt) => (
               <button
                 key={opt.code}
@@ -96,7 +114,8 @@ export function LanguageToggle({ className, variant = 'default' }: LanguageToggl
                 {opt.label}
               </button>
             ))}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     )

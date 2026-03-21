@@ -960,10 +960,11 @@ export function useCanvas(containerWidth: number = 0, containerHeight: number = 
         const boxHeight = rect.height || 12
 
         // --- Auto-Fit Font Size ---
-        // Instead of blindly using bbox height * 0.8, we measure the actual
-        // text content and find the largest font size that fits within the box.
         const fontFamily = 'Inter, sans-serif'
-        const fontSize = estimateBestFontSize(word.text, boxWidth, boxHeight, fontFamily)
+        // 直排模式：字體大小 ≈ 欄寬（每字占滿欄），不用 estimateBestFontSize（會算出錯誤的極小值）
+        const fontSize = word.vertical
+            ? Math.max(8, Math.min(Math.round(boxWidth * 0.9), 72))
+            : estimateBestFontSize(word.text, boxWidth, boxHeight, fontFamily)
 
         // Generate ID
         const id = Math.random().toString(36).substr(2, 9)
@@ -1032,10 +1033,11 @@ export function useCanvas(containerWidth: number = 0, containerHeight: number = 
         }
 
         // --- Create Textbox with Background Mask ---
-        // Use VerticalTextbox for vertical alignment support.
-        // We start from OCR bbox + buffer, then auto-expand by measured text width to avoid
-        // creating a wrapped two-line textbox on first click.
-        const effectiveWidth = Math.max(rect.width || 0, 50) + 20
+        // 直排模式：寬度 = fontSize + 小 padding，讓每字一行形成直書視覺
+        // 橫排模式：從 OCR bbox + buffer 開始，再依實際文字寬度展開
+        const effectiveWidth = word.vertical
+            ? Math.round(fontSize * 1.1) + 8
+            : Math.max(rect.width || 0, 50) + 20
         const measureTextWidthAtSize = (content: string, sizePx: number, family: string) => {
             if (typeof document === 'undefined') return 0
             const measurementCanvas = document.createElement('canvas')
@@ -1077,30 +1079,39 @@ export function useCanvas(containerWidth: number = 0, containerHeight: number = 
             borderScaleFactor: 2
         } as any)
 
-        const measuredWidth = measureTextWidthAtSize(word.text || '', (fontSize || 10), fontFamily)
-        const horizontalPadding = 28
-        const unzoomedCanvasWidth = currentPage?.width || (canvas.getWidth() / (canvas.getZoom() || 1))
-        const maxTextboxWidth = Math.max(80, unzoomedCanvasWidth - 8)
-        const targetWidth = Math.min(
-            maxTextboxWidth,
-            Math.max(effectiveWidth, Math.ceil(measuredWidth + horizontalPadding))
-        )
-
-        if (targetWidth > effectiveWidth) {
-            const originalLeft = rect.left || 0
-            const originalCenterX = originalLeft + (effectiveWidth / 2)
-            const maxLeft = Math.max(0, maxTextboxWidth - targetWidth)
-            const adjustedLeft = Math.min(Math.max(0, originalCenterX - (targetWidth / 2)), maxLeft)
-            text.set({
-                width: targetWidth,
-                left: adjustedLeft
-            })
-                ; (text as any).initDimensions?.()
+        if (word.vertical) {
+            // 直排：鎖定欄高為 minHeight，寬度已設為一字寬，不展開
+            ; (text as any).minHeight = boxHeight
+            ; (text as any).height = boxHeight
+            ; (text as any).initDimensions?.()
             text.setCoords()
-        }
+        } else {
+            // 橫排：依測量文字寬度展開 textbox
+            const measuredWidth = measureTextWidthAtSize(word.text || '', (fontSize || 10), fontFamily)
+            const horizontalPadding = 28
+            const unzoomedCanvasWidth = currentPage?.width || (canvas.getWidth() / (canvas.getZoom() || 1))
+            const maxTextboxWidth = Math.max(80, unzoomedCanvasWidth - 8)
+            const targetWidth = Math.min(
+                maxTextboxWidth,
+                Math.max(effectiveWidth, Math.ceil(measuredWidth + horizontalPadding))
+            )
 
-        // Initialize minHeight based on initial height to preserve user-visible box height
-        ; (text as any).minHeight = text.height || (rect.height || 0)
+            if (targetWidth > effectiveWidth) {
+                const originalLeft = rect.left || 0
+                const originalCenterX = originalLeft + (effectiveWidth / 2)
+                const maxLeft = Math.max(0, maxTextboxWidth - targetWidth)
+                const adjustedLeft = Math.min(Math.max(0, originalCenterX - (targetWidth / 2)), maxLeft)
+                text.set({
+                    width: targetWidth,
+                    left: adjustedLeft
+                })
+                    ; (text as any).initDimensions?.()
+                text.setCoords()
+            }
+
+            // Initialize minHeight based on initial height to preserve user-visible box height
+            ; (text as any).minHeight = text.height || (rect.height || 0)
+        }
 
         // Attach standard controls & scaling behavior
         attachTextObjectBehavior(canvas, text)

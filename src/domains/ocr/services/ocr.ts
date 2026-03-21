@@ -8,6 +8,8 @@ import { useDebugStore } from '@/shared/store/useDebugStore'
 export type OCRLanguage =
     | 'chi_tra'
     | 'chi_sim'
+    | 'chi_tra_vert'
+    | 'chi_sim_vert'
     | 'eng'
     | 'jpn'
     | 'kor'
@@ -20,6 +22,10 @@ export type OCRLanguage =
     | 'ara'
     | 'tha'
     | 'vie'
+
+export function isVerticalLanguage(lang: OCRLanguage): boolean {
+    return lang === 'chi_tra_vert' || lang === 'chi_sim_vert'
+}
 
 // 定義 OCR 文字物件介面
 export interface OCRWord {
@@ -34,6 +40,7 @@ export interface OCRWord {
     id?: string
     language?: 'en' | 'zh' | 'mixed'
     source?: 'tesseract'
+    vertical?: boolean
 }
 
 // 文字分割方法
@@ -117,12 +124,12 @@ export const ocrService = {
             // Note: tessedit_pageseg_mode 屬於 WorkerParams，必須透過 setParameters() 設定
             // 使用 PSM enum，不可直接使用字串
             await w.setParameters({
-                tessedit_pageseg_mode: PSM.SINGLE_BLOCK,  // Assume a single uniform block of text
+                tessedit_pageseg_mode: isVerticalLanguage(lang) ? PSM.SINGLE_BLOCK_VERT_TEXT : PSM.SINGLE_BLOCK,
                 preserve_interword_spaces: '1',
             });
             const result = await w.recognize(processedImage, {}, { blocks: true })
             const data = result.data as any;
-            return this.processOutput(data, processedImage, debugSteps, segmentationMethod, onDebugImage)
+            return this.processOutput(data, processedImage, debugSteps, segmentationMethod, onDebugImage, isVerticalLanguage(lang))
         } catch (err: any) {
             // 如果遇到關鍵錯誤 (可能是 Worker 壞了)，嘗試重啟 Worker
             if (err.toString().includes('SetImageFile') || err.message?.includes('null') || err.message?.includes('Cannot read properties of null')) {
@@ -131,7 +138,7 @@ export const ocrService = {
                     this.worker = null; // 確保清空
                     w = await this.init(lang); // 使用正確的語言參數重新初始化
                     const { data } = await w.recognize(processedImage, {}, { blocks: true });
-                    return this.processOutput(data, processedImage, debugSteps, segmentationMethod, onDebugImage);
+                    return this.processOutput(data, processedImage, debugSteps, segmentationMethod, onDebugImage, isVerticalLanguage(lang));
                 } catch (retryErr: any) {
                     throw new Error(`Tesseract Worker 重啟後仍然失敗: ${retryErr.message}`);
                 }
@@ -159,7 +166,7 @@ export const ocrService = {
         const { imageData, imageElement } = await imageUrlToImageData(imageDataUrl);
 
         // 2. 分割 (Morphology)
-        let boxes = await foundation.detect(imageData);
+        let boxes = await foundation.detect(imageData, isVerticalLanguage(lang));
 
         // 3. 優化 (Filter & Merge)
         boxes = boxes.filter(b => b.x1 - b.x0 > 10 && b.y1 - b.y0 > 10);
@@ -201,6 +208,9 @@ export const ocrService = {
                 confidence: w.confidence
             }));
 
+            if (isVerticalLanguage(lang)) {
+                adjustedWords.forEach(w => { w.vertical = true })
+            }
             allWords.push(...adjustedWords);
 
             // Append to Debug Store (Merged Layer)
@@ -222,7 +232,8 @@ export const ocrService = {
         processedImage: string,
         debugSteps: string[],
         segmentationMethod: SegmentationMethod = 'tesseract',
-        onDebugImage?: (dataUrl: string, label: string) => void
+        onDebugImage?: (dataUrl: string, label: string) => void,
+        isVertical: boolean = false
     ): Promise<OCRWord[]> {
         void segmentationMethod;
         // 0. 獲取文字框 (相容 Tesseract.js v7，需要 { blocks: true } 選項)
@@ -359,7 +370,7 @@ export const ocrService = {
         if (useLineLevelResults) {
             groupedWords = filteredWords;
         } else {
-            groupedWords = this.groupWordsIntoTextBoxes(filteredWords);
+            groupedWords = this.groupWordsIntoTextBoxes(filteredWords, isVertical);
         }
 
         // 4. 重疊合併 (解決方框重疊導致的重複辨識)
@@ -392,15 +403,24 @@ export const ocrService = {
             this.drawTextBoxes(processedImage, mergedWords, '5_text_boxes.png', onDebugImage)
         }
 
+        // 直排語言：標記每個 word 的 vertical 旗標，供渲染層使用
+        if (isVertical) {
+            mergedWords.forEach(w => { w.vertical = true })
+        }
+
         return Promise.resolve(mergedWords);
     },
 
     /**
-     * 智慧分組：將水平相鄰的文字合併為單一文字框
-     * 使用迭代式合併策略，處理複雜排版
+     * 智慧分組：將相鄰的文字合併為單一文字框
+     * vertical=true 時使用垂直排版邏輯（依欄分組，由右至左）
      */
-    groupWordsIntoTextBoxes(words: OCRWord[]): OCRWord[] {
+    groupWordsIntoTextBoxes(words: OCRWord[], vertical = false): OCRWord[] {
         if (words.length === 0) return []
+
+        if (vertical) {
+            return this.groupWordsVertically(words)
+        }
 
         // 先分行：根據 Y 座標將文字分組
         const lines = this.groupIntoLines(words)
@@ -419,6 +439,92 @@ export const ocrService = {
         }
 
         return result
+    },
+
+    /**
+     * 直排分組：將垂直相鄰的文字合併（由右至左排欄）
+     */
+    groupWordsVertically(words: OCRWord[]): OCRWord[] {
+        const columns = this.groupIntoColumns(words)
+        let result: OCRWord[] = []
+        for (const column of columns) {
+            const rows = this.splitColumnIntoRows(column)
+            result = result.concat(rows.map(row => {
+                const text = row.map(w => w.text).join('')
+                const bbox = this.mergeBoundingBoxes(row.map(w => w.bbox))
+                const confidence = row.reduce((sum, w) => sum + (w.confidence || 0), 0) / row.length
+                return { text, bbox, confidence }
+            }))
+        }
+        return result
+    },
+
+    /**
+     * 直排：依 X 座標分欄（由右至左），同欄內依水平重疊度判斷
+     */
+    groupIntoColumns(words: OCRWord[]): OCRWord[][] {
+        // 由右至左排序（傳統中文直排閱讀順序）
+        const sorted = [...words].sort((a, b) => b.bbox.x1 - a.bbox.x1)
+        const columns: OCRWord[][] = []
+        let currentColumn: OCRWord[] = [sorted[0]]
+
+        for (let i = 1; i < sorted.length; i++) {
+            const curr = sorted[i]
+            // 與目前欄中任一字比較水平重疊
+            const refWord = currentColumn[currentColumn.length - 1]
+            const overlap = this.calculateHorizontalOverlap(refWord.bbox, curr.bbox)
+            if (overlap > 0.5) {
+                currentColumn.push(curr)
+            } else {
+                currentColumn.sort((a, b) => a.bbox.y0 - b.bbox.y0)
+                columns.push(currentColumn)
+                currentColumn = [curr]
+            }
+        }
+        currentColumn.sort((a, b) => a.bbox.y0 - b.bbox.y0)
+        columns.push(currentColumn)
+        return columns
+    },
+
+    /**
+     * 直排：將同一欄內字符依垂直間隙切分為獨立文字框
+     */
+    splitColumnIntoRows(column: OCRWord[]): OCRWord[][] {
+        if (column.length <= 1) return [column]
+
+        const gaps: number[] = []
+        let totalWidth = 0
+        for (let i = 0; i < column.length; i++) {
+            totalWidth += (column[i].bbox.x1 - column[i].bbox.x0)
+            if (i > 0) {
+                gaps.push(column[i].bbox.y0 - column[i - 1].bbox.y1)
+            }
+        }
+        const avgWidth = totalWidth / column.length
+        const medianGap = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)] ?? 0
+        const softThreshold = Math.max(medianGap * 3, avgWidth * 0.7, 10)
+
+        const rows: OCRWord[][] = []
+        let currentRow: OCRWord[] = [column[0]]
+        for (let i = 1; i < column.length; i++) {
+            if (gaps[i - 1] > softThreshold) {
+                rows.push(currentRow)
+                currentRow = [column[i]]
+            } else {
+                currentRow.push(column[i])
+            }
+        }
+        rows.push(currentRow)
+        return rows
+    },
+
+    calculateHorizontalOverlap(bbox1: any, bbox2: any): number {
+        const x0 = Math.max(bbox1.x0, bbox2.x0)
+        const x1 = Math.min(bbox1.x1, bbox2.x1)
+        const width1 = bbox1.x1 - bbox1.x0
+        const width2 = bbox2.x1 - bbox2.x0
+        const intersection = Math.max(0, x1 - x0)
+        return intersection / Math.min(width1, width2)
     },
 
     groupIntoLines(words: OCRWord[]): OCRWord[][] {

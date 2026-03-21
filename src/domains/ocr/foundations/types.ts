@@ -14,5 +14,5 @@ export interface FoundationResult {
 export interface IOcrFoundation {
     name: string;
     description: string;
-    detect(imageData: ImageData): Promise<BBox[]>;
+    detect(imageData: ImageData, vertical?: boolean): Promise<BBox[]>;
 }

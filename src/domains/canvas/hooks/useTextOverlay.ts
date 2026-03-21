@@ -38,16 +38,22 @@ export function useTextOverlay() {
   // Convert OCR data to text boxes
   const initializeFromOCR = useCallback((ocrData: OCRWord[]) => {
     const boxes: TextBox[] = ocrData.map((word, index) => {
-      // Auto-fit font size based on bounding box height
       const boxHeight = word.bbox.y1 - word.bbox.y0
       const boxWidth = word.bbox.x1 - word.bbox.x0
       const textLen = (word.text || '').length
-      // Estimate: for CJK each char ≈ 1em, for Latin average ≈ 0.6em
-      const hasCJK = /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(word.text || '')
-      const estimatedCharWidth = hasCJK ? 1.0 : 0.6
-      const widthBasedSize = textLen > 0 ? boxWidth / (textLen * estimatedCharWidth) : boxHeight * 0.7
-      const heightBasedSize = boxHeight * 0.8
-      const autoFontSize = Math.max(8, Math.min(Math.round(Math.min(widthBasedSize, heightBasedSize)), 72))
+
+      let autoFontSize: number
+      if (word.vertical) {
+        // 直排：每個 CJK 字符寬度 ≈ 欄寬，字體大小以欄寬為基準
+        autoFontSize = Math.max(8, Math.min(Math.round(boxWidth * 0.9), 72))
+      } else {
+        // 橫排：原有邏輯
+        const hasCJK = /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(word.text || '')
+        const estimatedCharWidth = hasCJK ? 1.0 : 0.6
+        const widthBasedSize = textLen > 0 ? boxWidth / (textLen * estimatedCharWidth) : boxHeight * 0.7
+        const heightBasedSize = boxHeight * 0.8
+        autoFontSize = Math.max(8, Math.min(Math.round(Math.min(widthBasedSize, heightBasedSize)), 72))
+      }
 
       return {
         ...word,
@@ -60,7 +66,8 @@ export function useTextOverlay() {
           color: '#000000',
           backgroundColor: 'rgba(255, 255, 255, 0.8)',
           bold: false,
-          italic: false
+          italic: false,
+          writingMode: word.vertical ? 'vertical-rl' : 'horizontal-tb'
         }
       }
     })

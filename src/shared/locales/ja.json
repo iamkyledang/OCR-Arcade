@@ -135,6 +135,8 @@
     "languageShort": {
       "chi_tra": "繁",
       "chi_sim": "簡",
+      "chi_tra_vert": "繁縦",
+      "chi_sim_vert": "簡縦",
       "eng": "英",
       "jpn": "日",
       "kor": "韓",
@@ -151,6 +153,8 @@
     "languageLabel": {
       "chi_tra": "繁体中国語 (chi_tra)",
       "chi_sim": "簡体中国語 (chi_sim)",
+      "chi_tra_vert": "繁体中国語縦書き (chi_tra_vert)",
+      "chi_sim_vert": "簡体中国語縦書き (chi_sim_vert)",
       "eng": "英語 (eng)",
       "jpn": "日本語 (jpn)",
       "kor": "韓国語 (kor)",
