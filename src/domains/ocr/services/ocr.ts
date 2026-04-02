@@ -120,11 +120,18 @@ export const ocrService = {
         try {
             // Tesseract.js v7: 需要明確指定 output 選項才會返回 blocks 結構
             // recognize(image, options, output, jobId)
-            // 使用 PSM 6 (假設為統一的文字區塊) 來提升辨識品質
-            // Note: tessedit_pageseg_mode 屬於 WorkerParams，必須透過 setParameters() 設定
-            // 使用 PSM enum，不可直接使用字串
+            // 根據 segmentationMethod 決定 Tesseract 的 Page Segmentation Mode (PSM)
+            // 如果是子區域 (pre-ocr-subregion)，表示已經切割過了，預設其中只包含單一文字區塊
+            // 如果是全頁 (tesseract)，則這是一張完整的圖，對於架構圖等分散文字，使用 SPARSE_TEXT (11) 效果最佳
+            let psmMode = PSM.AUTO;
+            if (segmentationMethod === 'pre-ocr-subregion') {
+                psmMode = isVerticalLanguage(lang) ? PSM.SINGLE_BLOCK_VERT_TEXT : PSM.SINGLE_BLOCK;
+            } else {
+                psmMode = PSM.SPARSE_TEXT; // PSM 11 會尋找圖中所有分散的文字
+            }
+
             await w.setParameters({
-                tessedit_pageseg_mode: isVerticalLanguage(lang) ? PSM.SINGLE_BLOCK_VERT_TEXT : PSM.SINGLE_BLOCK,
+                tessedit_pageseg_mode: psmMode,
                 preserve_interword_spaces: '1',
             });
             const result = await w.recognize(processedImage, {}, { blocks: true })
@@ -137,6 +144,15 @@ export const ocrService = {
                     await this.terminate();
                     this.worker = null; // 確保清空
                     w = await this.init(lang); // 使用正確的語言參數重新初始化
+                    
+                    let psmMode = PSM.AUTO;
+                    if (segmentationMethod === 'pre-ocr-subregion') {
+                        psmMode = isVerticalLanguage(lang) ? PSM.SINGLE_BLOCK_VERT_TEXT : PSM.SINGLE_BLOCK;
+                    } else {
+                        psmMode = PSM.SPARSE_TEXT;
+                    }
+                    await w.setParameters({ tessedit_pageseg_mode: psmMode, preserve_interword_spaces: '1' });
+
                     const { data } = await w.recognize(processedImage, {}, { blocks: true });
                     return this.processOutput(data, processedImage, debugSteps, segmentationMethod, onDebugImage, isVerticalLanguage(lang));
                 } catch (retryErr: any) {

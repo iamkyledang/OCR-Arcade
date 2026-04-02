@@ -23,9 +23,14 @@ export class ScanStrategyService {
     ): Promise<OCRProcessingResult> {
         const startTime = performance.now();
 
-        const allWords = await ocrService.recognizeWithPreSegmentation(
+        const allWords = await ocrService.recognize(
             imageDataUrl,
-            lang
+            lang,
+            undefined,
+            true,
+            [],
+            undefined,
+            'tesseract'
         );
 
         const endTime = performance.now();

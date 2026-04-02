@@ -126,7 +126,7 @@ class OCRServiceManager {
       true,
       [],
       undefined,
-      'pre-ocr-density'
+      'tesseract'
     );
     const processingTime = performance.now() - startTime;
 
