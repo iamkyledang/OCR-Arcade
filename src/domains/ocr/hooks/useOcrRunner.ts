@@ -1,8 +1,7 @@
 import { useCallback } from 'react'
 import { useStore } from '@/shared/store/useStore'
 import { useToastStore } from '@/shared/store/feedbackStore'
-import { ocrServiceManager } from '@/domains/ocr/services/OCRServiceManager'
-import { scanStrategyService, type OCRStrategy } from '@/domains/ocr/services/ScanStrategyService'
+import { imageAnalysisService } from '@/domains/ocr/services/imageAnalysisFacade'
 import { useTranslation } from 'react-i18next'
 
 export function useOcrRunner() {
@@ -11,6 +10,7 @@ export function useOcrRunner() {
     pages,
     currentPageIndex,
     ocrLanguage,
+    ocrSegmentation,
     setPageOCRData,
     markOcrTriggered,
     setOcrStatus,
@@ -22,12 +22,6 @@ export function useOcrRunner() {
     const currentPage = pages[currentPageIndex]
     if (!currentPage) {
       addToast(t('toasts.needLoadImage'), 'info')
-      return
-    }
-
-    const serviceState = ocrServiceManager.getState()
-    if (serviceState.status !== 'ready') {
-      addToast(t('toasts.waitForService'), 'info')
       return
     }
 
@@ -49,20 +43,19 @@ export function useOcrRunner() {
         setOcrProgress(Math.min(currentProgress + 10, 90))
       }, 200)
 
-      const selectedStrategy: OCRStrategy = 'tesseract_morph'
-      const result = await scanStrategyService.execute(
-        selectedStrategy,
+      const words = await imageAnalysisService.processImage(
         currentPage.imageData,
-        ocrLanguage
+        ocrLanguage,
+        ocrSegmentation
       )
 
       if (progressInterval) clearInterval(progressInterval)
       setOcrProgress(100)
 
-      setPageOCRData(currentPageIndex, result.words || [])
+      setPageOCRData(currentPageIndex, words)
 
       setOcrStatus('completed')
-      addToast(t('toasts.ocrSuccess', { count: result.words?.length || 0 }), 'success')
+      addToast(t('toasts.ocrSuccess', { count: words.length }), 'success')
 
       setTimeout(() => {
         setOcrStatus('idle')
@@ -82,6 +75,7 @@ export function useOcrRunner() {
     pages,
     currentPageIndex,
     ocrLanguage,
+    ocrSegmentation,
     setPageOCRData,
     markOcrTriggered,
     setOcrStatus,

@@ -167,7 +167,14 @@
       "ara": "阿拉伯文 (ara)",
       "tha": "泰文 (tha)",
       "vie": "越南文 (vie)"
-    }
+    },
+    "advanced": "進階",
+    "engineAI": "AI 精準 (DBNet)",
+    "engineAIDesc": "最高品質",
+    "engineFast": "快速 (Tesseract)",
+    "engineFastDesc": "速度較快，品質略低",
+    "engineMorph": "形態學",
+    "engineMorphDesc": "密度分析法"
   },
   "sidebar": {
     "pages": "頁面",
@@ -202,7 +209,10 @@
     "projectExported": "專案已匯出",
     "projectExportFailed": "匯出專案失敗",
     "projectImported": "專案「{{name}}」已匯入",
-    "projectImportFailed": "匯入專案失敗，請檢查文件格式"
+    "projectImportFailed": "匯入專案失敗，請檢查文件格式",
+    "regionOcrNoText": "選取範圍內未偵測到文字",
+    "regionOcrSuccess": "區域 OCR：找到 {{count}} 個文字區域",
+    "regionOcrFail": "區域 OCR 失敗"
   },
   "properties": {
     "title": "屬性",
@@ -305,7 +315,11 @@
     "zoomOut": "縮小 (-)",
     "zoomReset": "重設縮放 (100%)",
     "zoomIn": "放大 (+)",
-    "fitScreen": "適應螢幕"
+    "fitScreen": "適應螢幕",
+    "panMode": "平移模式",
+    "selectMode": "選取模式",
+    "regionOcr": "區域 OCR — 拖曳選取範圍進行辨識",
+    "regionOcrExit": "退出區域 OCR 模式 (Esc)"
   },
   "projects": {
     "title": "專案管理",

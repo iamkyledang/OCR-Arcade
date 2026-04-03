@@ -37,6 +37,8 @@ export const SimplifiedToolbar: React.FC<SimplifiedToolbarProps> = ({
     canRedo,
     ocrLanguage,
     setOcrLanguage,
+    ocrSegmentation,
+    setOcrSegmentation,
     ocrStatus,
     ocrProgress,
     ocrHasTriggered,
@@ -195,9 +197,9 @@ export const SimplifiedToolbar: React.FC<SimplifiedToolbarProps> = ({
             progress={ocrProgress}
             compact={!isDesktop}
             selectedLanguage={ocrLanguage}
-            onLanguageChange={(lang) => {
-              setOcrLanguage(lang);
-            }}
+            onLanguageChange={(lang) => setOcrLanguage(lang)}
+            selectedSegmentation={ocrSegmentation}
+            onSegmentationChange={(seg) => setOcrSegmentation(seg)}
           />
         </div>
       </div>

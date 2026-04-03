@@ -167,7 +167,14 @@
       "ara": "Арабский (ara)",
       "tha": "Тайский (tha)",
       "vie": "Вьетнамский (vie)"
-    }
+    },
+    "advanced": "Advanced",
+    "engineAI": "AI (DBNet)",
+    "engineAIDesc": "Best quality",
+    "engineFast": "Fast (Tesseract)",
+    "engineFastDesc": "Faster, lower quality",
+    "engineMorph": "Morphology",
+    "engineMorphDesc": "Density-based"
   },
   "sidebar": {
     "pages": "Страницы",
@@ -202,7 +209,10 @@
     "projectExported": "Проект экспортирован",
     "projectExportFailed": "Не удалось экспортировать проект",
     "projectImported": "Проект \"{{name}}\" импортирован",
-    "projectImportFailed": "Импорт не удался. Проверьте формат."
+    "projectImportFailed": "Импорт не удался. Проверьте формат.",
+    "regionOcrNoText": "No text found in the selected region",
+    "regionOcrSuccess": "Region OCR: {{count}} text regions found",
+    "regionOcrFail": "Region OCR failed"
   },
   "properties": {
     "title": "Свойства",
@@ -303,7 +313,11 @@
     "zoomOut": "Уменьшить (-)",
     "zoomReset": "Сбросить масштаб (100%)",
     "zoomIn": "Увеличить (+)",
-    "fitScreen": "По размеру экрана"
+    "fitScreen": "По размеру экрана",
+    "panMode": "Pan mode",
+    "selectMode": "Select mode",
+    "regionOcr": "Region OCR — draw a rectangle to OCR a specific area",
+    "regionOcrExit": "Exit region OCR mode (Esc)"
   },
   "projects": {
     "title": "Менеджер проектов",

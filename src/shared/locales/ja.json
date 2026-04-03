@@ -167,7 +167,14 @@
       "ara": "アラビア語 (ara)",
       "tha": "タイ語 (tha)",
       "vie": "ベトナム語 (vie)"
-    }
+    },
+    "advanced": "Advanced",
+    "engineAI": "AI (DBNet)",
+    "engineAIDesc": "Best quality",
+    "engineFast": "Fast (Tesseract)",
+    "engineFastDesc": "Faster, lower quality",
+    "engineMorph": "Morphology",
+    "engineMorphDesc": "Density-based"
   },
   "sidebar": {
     "pages": "ページ",
@@ -202,7 +209,10 @@
     "projectExported": "プロジェクトをエクスポートしました",
     "projectExportFailed": "プロジェクトのエクスポートに失敗",
     "projectImported": "プロジェクト「{{name}}」をインポートしました",
-    "projectImportFailed": "インポートに失敗しました。形式を確認してください"
+    "projectImportFailed": "インポートに失敗しました。形式を確認してください",
+    "regionOcrNoText": "No text found in the selected region",
+    "regionOcrSuccess": "Region OCR: {{count}} text regions found",
+    "regionOcrFail": "Region OCR failed"
   },
   "properties": {
     "title": "プロパティ",
@@ -303,7 +313,11 @@
     "zoomOut": "縮小 (-)",
     "zoomReset": "ズームをリセット (100%)",
     "zoomIn": "拡大 (+)",
-    "fitScreen": "画面に合わせる"
+    "fitScreen": "画面に合わせる",
+    "panMode": "Pan mode",
+    "selectMode": "Select mode",
+    "regionOcr": "Region OCR — draw a rectangle to OCR a specific area",
+    "regionOcrExit": "Exit region OCR mode (Esc)"
   },
   "projects": {
     "title": "プロジェクト管理",

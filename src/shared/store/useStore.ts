@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { OCRWord, OCRLanguage } from '@/domains/ocr/services/ocr'
+import type { OCRWord, OCRLanguage, SegmentationMethod } from '@/domains/ocr/services/ocr'
 import type { TextBox, TextFormatting } from '@/domains/canvas/components/TextOverlay'
 import type { ScreenSize } from '@/domains/layout/services/ResponsiveLayoutManager'
 
@@ -42,6 +42,7 @@ interface AppState {
     isSidebarCollapsed: boolean
     zoom: number
     ocrLanguage: OCRLanguage
+    ocrSegmentation: SegmentationMethod
     ocrHasTriggered: boolean
     ocrPromptDismissed: boolean
     ocrStatus: 'idle' | 'processing' | 'completed' | 'error'
@@ -77,6 +78,7 @@ interface AppState {
     setPropertiesPanelCollapsed: (collapsed: boolean) => void
     setZoom: (zoom: number) => void
     setOcrLanguage: (lang: OCRLanguage) => void
+    setOcrSegmentation: (seg: SegmentationMethod) => void
     setOcrPromptDismissed: (dismissed: boolean) => void
     markOcrTriggered: () => void
     setOcrStatus: (status: 'idle' | 'processing' | 'completed' | 'error') => void
@@ -157,6 +159,7 @@ export const useStore = create<AppState>((set, get) => ({
     isSidebarCollapsed: false,
     zoom: 1.0,
     ocrLanguage: 'chi_tra',
+    ocrSegmentation: 'tesseract',
     ocrHasTriggered: false,
     ocrPromptDismissed: false,
     ocrStatus: 'idle',
@@ -237,6 +240,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     setZoom: (zoom) => set({ zoom }),
     setOcrLanguage: (lang) => set({ ocrLanguage: lang }),
+    setOcrSegmentation: (seg) => set({ ocrSegmentation: seg }),
     setOcrPromptDismissed: (dismissed) => set({ ocrPromptDismissed: dismissed }),
     markOcrTriggered: () => set({ ocrHasTriggered: true }),
     setOcrStatus: (status) => set({ ocrStatus: status }),

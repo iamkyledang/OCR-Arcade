@@ -167,7 +167,14 @@
       "ara": "Árabe (ara)",
       "tha": "Tailandés (tha)",
       "vie": "Vietnamita (vie)"
-    }
+    },
+    "advanced": "Advanced",
+    "engineAI": "AI (DBNet)",
+    "engineAIDesc": "Best quality",
+    "engineFast": "Fast (Tesseract)",
+    "engineFastDesc": "Faster, lower quality",
+    "engineMorph": "Morphology",
+    "engineMorphDesc": "Density-based"
   },
   "sidebar": {
     "pages": "Páginas",
@@ -202,7 +209,10 @@
     "projectExported": "Proyecto exportado",
     "projectExportFailed": "Error al exportar el proyecto",
     "projectImported": "Proyecto \"{{name}}\" importado",
-    "projectImportFailed": "La importación falló. Revisa el formato."
+    "projectImportFailed": "La importación falló. Revisa el formato.",
+    "regionOcrNoText": "No text found in the selected region",
+    "regionOcrSuccess": "Region OCR: {{count}} text regions found",
+    "regionOcrFail": "Region OCR failed"
   },
   "properties": {
     "title": "Propiedades",
@@ -303,7 +313,11 @@
     "zoomOut": "Alejar (-)",
     "zoomReset": "Restablecer zoom (100%)",
     "zoomIn": "Acercar (+)",
-    "fitScreen": "Ajustar a pantalla"
+    "fitScreen": "Ajustar a pantalla",
+    "panMode": "Pan mode",
+    "selectMode": "Select mode",
+    "regionOcr": "Region OCR — draw a rectangle to OCR a specific area",
+    "regionOcrExit": "Exit region OCR mode (Esc)"
   },
   "projects": {
     "title": "Gestor de proyectos",

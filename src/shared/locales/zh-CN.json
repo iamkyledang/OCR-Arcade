@@ -167,7 +167,14 @@
       "ara": "阿拉伯文 (ara)",
       "tha": "泰文 (tha)",
       "vie": "越南文 (vie)"
-    }
+    },
+    "advanced": "高级",
+    "engineAI": "AI 精准 (DBNet)",
+    "engineAIDesc": "最高质量",
+    "engineFast": "快速 (Tesseract)",
+    "engineFastDesc": "速度更快，质量略低",
+    "engineMorph": "形态学",
+    "engineMorphDesc": "密度分析法"
   },
   "sidebar": {
     "pages": "页面",
@@ -202,7 +209,10 @@
     "projectExported": "项目已导出",
     "projectExportFailed": "导出项目失败",
     "projectImported": "项目“{{name}}”已导入",
-    "projectImportFailed": "导入项目失败，请检查文件格式"
+    "projectImportFailed": "导入项目失败，请检查文件格式",
+    "regionOcrNoText": "所选区域内未检测到文字",
+    "regionOcrSuccess": "区域 OCR：找到 {{count}} 个文字区域",
+    "regionOcrFail": "区域 OCR 失败"
   },
   "properties": {
     "title": "属性",
@@ -304,7 +314,11 @@
     "zoomOut": "缩小 (-)",
     "zoomReset": "重置缩放 (100%)",
     "zoomIn": "放大 (+)",
-    "fitScreen": "适应屏幕"
+    "fitScreen": "适应屏幕",
+    "panMode": "平移模式",
+    "selectMode": "选择模式",
+    "regionOcr": "区域 OCR — 拖拽选框进行识别",
+    "regionOcrExit": "退出区域 OCR 模式 (Esc)"
   },
   "projects": {
     "title": "项目管理",

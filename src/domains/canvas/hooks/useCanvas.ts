@@ -846,13 +846,25 @@ export function useCanvas(containerWidth: number = 0, containerHeight: number = 
     useEffect(() => {
         if (!currentPage?.ocrData || !fabricRef.current) return
 
-        // Check if we should add hotspots. 
+        // Check if we should add hotspots.
         // If canvasStates[index] exists, we assume hotspots/edits are already there.
         // If NOT, we add them.
         if (!canvasStates[currentPageIndex]) {
             addHotspots(currentPage.ocrData)
         }
     }, [currentPage?.ocrData, currentPageIndex, canvasStates])
+
+    // Handle Region OCR results - add directly as hotspots on the Fabric canvas
+    // (same path as global OCR, giving native Fabric drag behaviour)
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const words = (e as CustomEvent).detail?.words
+            if (!Array.isArray(words) || !fabricRef.current) return
+            addHotspots(words)
+        }
+        window.addEventListener('canvas:addWords', handler)
+        return () => window.removeEventListener('canvas:addWords', handler)
+    }, [])
 
 
     // Helper to add hotspots
@@ -985,7 +997,7 @@ export function useCanvas(containerWidth: number = 0, containerHeight: number = 
                 const tempCanvas = document.createElement('canvas')
                 tempCanvas.width = imgElement.width
                 tempCanvas.height = imgElement.height
-                const ctx = tempCanvas.getContext('2d')
+                const ctx = tempCanvas.getContext('2d', { willReadFrequently: true })
 
                 if (ctx) {
                     ctx.drawImage(imgElement, 0, 0)

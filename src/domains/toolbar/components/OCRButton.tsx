@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { OCRButtonProps } from './types';
-import type { OCRLanguage } from '@/domains/ocr/services/ocr';
-import { ScanText, Loader2, CheckCircle2, AlertCircle, ChevronDown, Check } from 'lucide-react';
+import type { OCRLanguage, SegmentationMethod } from '@/domains/ocr/services/ocr';
+import { ScanText, Loader2, CheckCircle2, AlertCircle, ChevronDown, Check, Settings2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,9 +21,18 @@ export const OCRButton: React.FC<OCRButtonProps> = ({
   progress = 0,
   compact = false,
   selectedLanguage = 'chi_tra',
-  onLanguageChange
+  onLanguageChange,
+  selectedSegmentation = 'pre-ocr-ai',
+  onSegmentationChange
 }) => {
   const { t } = useTranslation();
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const segmentationOptions: Array<{ value: SegmentationMethod; label: string; desc: string }> = [
+    { value: 'pre-ocr-ai',      label: t('ocr.engineAI'),    desc: t('ocr.engineAIDesc') },
+    { value: 'tesseract',       label: t('ocr.engineFast'),  desc: t('ocr.engineFastDesc') },
+    { value: 'pre-ocr-density', label: t('ocr.engineMorph'), desc: t('ocr.engineMorphDesc') },
+  ];
   const languageOptions = useMemo<Array<{ value: OCRLanguage; short: string; label: string }>>(() => ([
     { value: 'chi_tra', short: t('ocr.languageShort.chi_tra'), label: t('ocr.languageLabel.chi_tra') },
     { value: 'chi_sim', short: t('ocr.languageShort.chi_sim'), label: t('ocr.languageLabel.chi_sim') },
@@ -173,7 +182,7 @@ export const OCRButton: React.FC<OCRButtonProps> = ({
             <ChevronDown size={14} className={status === 'processing' ? 'opacity-50' : ''} />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="mt-1 w-[180px] max-h-60 overflow-y-auto">
+        <DropdownMenuContent align="start" className="mt-1 w-[180px] max-h-72 overflow-y-auto">
           {languageOptions.map((option, index) => {
             const cleanLabel = option.label.replace(/\s*\([^)]*\)\s*/g, '').trim();
             const isFirstVert = option.value === 'chi_tra_vert';
@@ -191,6 +200,27 @@ export const OCRButton: React.FC<OCRButtonProps> = ({
               </DropdownMenuItem>
             </React.Fragment>
           )})}
+
+          {/* Advanced engine selector — hidden by default */}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={(e) => { e.preventDefault(); setShowAdvanced(v => !v); }}
+            className="flex items-center gap-1.5 cursor-pointer text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-[11px]"
+          >
+            <Settings2 size={11} />
+            <span>{t('ocr.advanced')}</span>
+            <ChevronDown size={10} className={cn('ml-auto transition-transform', showAdvanced && 'rotate-180')} />
+          </DropdownMenuItem>
+          {showAdvanced && segmentationOptions.map(opt => (
+            <DropdownMenuItem
+              key={opt.value}
+              onClick={() => onSegmentationChange?.(opt.value)}
+              className="flex items-center justify-between gap-2 cursor-pointer pl-5 text-[11px]"
+            >
+              <span className="truncate">{opt.label}</span>
+              {selectedSegmentation === opt.value && <Check size={12} className="shrink-0 text-primary" />}
+            </DropdownMenuItem>
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

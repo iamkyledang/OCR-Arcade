@@ -1,4 +1,4 @@
-import type { OCRLanguage } from '@/domains/ocr/services/ocr';
+import type { OCRLanguage, SegmentationMethod } from '@/domains/ocr/services/ocr';
 
 // Core interfaces for SimplifiedToolbar component system
 
@@ -47,6 +47,8 @@ export interface OCRButtonProps {
   compact?: boolean;
   selectedLanguage?: OCRLanguage;
   onLanguageChange?: (language: OCRLanguage) => void;
+  selectedSegmentation?: SegmentationMethod;
+  onSegmentationChange?: (seg: SegmentationMethod) => void;
 }
 
 

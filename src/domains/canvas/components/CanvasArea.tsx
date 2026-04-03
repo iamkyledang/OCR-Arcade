@@ -1,14 +1,15 @@
 import { useCanvas } from '@/domains/canvas/hooks/useCanvas'
 import { useStore } from '@/shared/store/useStore'
-import { ZoomIn, ZoomOut, RotateCcw, Hand, MousePointer, type LucideIcon } from 'lucide-react'
+import { ZoomIn, ZoomOut, RotateCcw, Hand, MousePointer, Crosshair, Loader2, type LucideIcon } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { TextOverlay } from './TextOverlay'
 import { OcrPromptOverlay } from './OcrPromptOverlay'
 import { DebugBboxOverlay } from './DebugBboxOverlay'
 import { useResponsiveLayout } from '@/domains/layout/hooks/useResponsiveLayout'
 import { useThemeStore } from '@/shared/store/themeStore'
 import { useTranslation } from 'react-i18next'
+import { useRegionOcr } from '@/domains/ocr/hooks/useRegionOcr'
 
 export function CanvasArea() {
     const { t } = useTranslation()
@@ -18,13 +19,19 @@ export function CanvasArea() {
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
     const { canvasRef } = useCanvas(dimensions.width, dimensions.height)
-    const { zoom, setZoom, textOverlayEnabled } = useStore()
+    const { zoom, setZoom, textOverlayEnabled, pages, currentPageIndex } = useStore()
     const { isMobile, isTablet } = useResponsiveLayout()
     const { theme } = useThemeStore()
     const [isPanMode, setIsPanMode] = useState(false)
     const [isGrabbing, setIsGrabbing] = useState(false)
     const isPanningRef = useRef(false)
     const panStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
+
+    // Region OCR mode
+    const { runRegionOcr, status: regionOcrStatus } = useRegionOcr()
+    const [isRegionOcrMode, setIsRegionOcrMode] = useState(false)
+    const [selectionStart, setSelectionStart] = useState<{ sx: number; sy: number; px: number; py: number } | null>(null)
+    const [selectionCurrent, setSelectionCurrent] = useState<{ sx: number; sy: number } | null>(null)
 
     useEffect(() => {
         if (!containerRef.current) return
@@ -129,6 +136,130 @@ export function CanvasArea() {
         }
     }, [])
 
+    // Escape key exits region OCR mode
+    useEffect(() => {
+        if (!isRegionOcrMode) return
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setIsRegionOcrMode(false)
+                setSelectionStart(null)
+                setSelectionCurrent(null)
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [isRegionOcrMode])
+
+    // Helper: get canvas scale factors for coordinate conversion
+    const getCanvasScale = useCallback(() => {
+        if (!canvasRef.current) return null
+        const rect = canvasRef.current.getBoundingClientRect()
+        const page = pages[currentPageIndex]
+        if (!page || !rect.width || !page.width) return null
+        return {
+            scaleX: rect.width / page.width,
+            scaleY: rect.height / page.height,
+            rect,
+            pageWidth: page.width,
+            pageHeight: page.height
+        }
+    }, [canvasRef, pages, currentPageIndex])
+
+    const toggleRegionOcrMode = useCallback(() => {
+        setIsRegionOcrMode(prev => {
+            if (!prev) setIsPanMode(false) // exit pan mode when entering region OCR
+            return !prev
+        })
+        setSelectionStart(null)
+        setSelectionCurrent(null)
+    }, [])
+
+    const handleRegionStart = useCallback((clientX: number, clientY: number) => {
+        const scale = getCanvasScale()
+        if (!scale) return
+        const sx = clientX - scale.rect.left
+        const sy = clientY - scale.rect.top
+        setSelectionStart({ sx, sy, px: sx / scale.scaleX, py: sy / scale.scaleY })
+        setSelectionCurrent({ sx, sy })
+    }, [getCanvasScale])
+
+    const handleRegionMove = useCallback((clientX: number, clientY: number) => {
+        if (!selectionStart) return
+        const scale = getCanvasScale()
+        if (!scale) return
+        setSelectionCurrent({
+            sx: clientX - scale.rect.left,
+            sy: clientY - scale.rect.top
+        })
+    }, [selectionStart, getCanvasScale])
+
+    const handleRegionEnd = useCallback(async (clientX: number, clientY: number) => {
+        if (!selectionStart) return
+        const scale = getCanvasScale()
+        if (!scale) return
+
+        const endSx = clientX - scale.rect.left
+        const endSy = clientY - scale.rect.top
+
+        const region = {
+            x0: Math.round(Math.max(0, Math.min(selectionStart.px, endSx / scale.scaleX))),
+            y0: Math.round(Math.max(0, Math.min(selectionStart.py, endSy / scale.scaleY))),
+            x1: Math.round(Math.min(scale.pageWidth, Math.max(selectionStart.px, endSx / scale.scaleX))),
+            y1: Math.round(Math.min(scale.pageHeight, Math.max(selectionStart.py, endSy / scale.scaleY))),
+        }
+
+        setSelectionStart(null)
+        setSelectionCurrent(null)
+        setIsRegionOcrMode(false)
+
+        if (region.x1 - region.x0 > 10 && region.y1 - region.y0 > 10) {
+            await runRegionOcr(region)
+        }
+    }, [selectionStart, getCanvasScale, runRegionOcr])
+
+    const handleRegionMouseDown = useCallback((e: React.MouseEvent) => {
+        e.preventDefault()
+        handleRegionStart(e.clientX, e.clientY)
+    }, [handleRegionStart])
+
+    const handleRegionMouseMove = useCallback((e: React.MouseEvent) => {
+        handleRegionMove(e.clientX, e.clientY)
+    }, [handleRegionMove])
+
+    const handleRegionMouseUp = useCallback(async (e: React.MouseEvent) => {
+        await handleRegionEnd(e.clientX, e.clientY)
+    }, [handleRegionEnd])
+
+    // Touch 事件需要 passive:false 才能 preventDefault（阻止捲頁）
+    // React 合成事件預設是 passive，無法 preventDefault，故改用原生監聽器
+    const regionOverlayRef = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        const el = regionOverlayRef.current
+        if (!el || !isRegionOcrMode) return
+        const onTouchStart = (e: TouchEvent) => {
+            e.preventDefault()
+            const touch = e.touches[0]
+            handleRegionStart(touch.clientX, touch.clientY)
+        }
+        const onTouchMove = (e: TouchEvent) => {
+            e.preventDefault()
+            const touch = e.touches[0]
+            handleRegionMove(touch.clientX, touch.clientY)
+        }
+        const onTouchEnd = (e: TouchEvent) => {
+            const touch = e.changedTouches[0]
+            handleRegionEnd(touch.clientX, touch.clientY)
+        }
+        el.addEventListener('touchstart', onTouchStart, { passive: false })
+        el.addEventListener('touchmove', onTouchMove, { passive: false })
+        el.addEventListener('touchend', onTouchEnd)
+        return () => {
+            el.removeEventListener('touchstart', onTouchStart)
+            el.removeEventListener('touchmove', onTouchMove)
+            el.removeEventListener('touchend', onTouchEnd)
+        }
+    }, [isRegionOcrMode, handleRegionStart, handleRegionMove, handleRegionEnd])
+
     // 100% = 1.0 (Fit to Screen)
     // 0.1 step = 10%
     const handleZoomIn = () => setZoom(zoom + 0.1)
@@ -153,8 +284,9 @@ export function CanvasArea() {
                     // Cursor logic:
                     // 1. If Grabbing (panning active) -> cursor-grabbing-custom
                     // 2. If Pan Mode (idle) -> cursor-pan-custom
-                    // 3. If Select Mode -> default (let Fabric handle hover cursors)
-                    isGrabbing ? "cursor-grabbing-custom" : isPanMode ? "cursor-pan-custom" : "cursor-default",
+                    // 3. If Region OCR Mode -> crosshair
+                    // 4. If Select Mode -> default (let Fabric handle hover cursors)
+                    isGrabbing ? "cursor-grabbing-custom" : isPanMode ? "cursor-pan-custom" : isRegionOcrMode ? "cursor-crosshair" : "cursor-default",
                     isPanMode && "select-none" // Prevent text selection while panning
                 )}
                 id="canvas-container"
@@ -198,6 +330,28 @@ export function CanvasArea() {
                     />
                     {/* Debug BBox Overlay */}
                     <DebugBboxOverlay canvasRef={canvasRef} />
+                    {/* Region OCR Selection Overlay */}
+                    {isRegionOcrMode && (
+                        <div
+                            ref={regionOverlayRef}
+                            className="absolute inset-0 z-50 cursor-crosshair select-none touch-none"
+                            onMouseDown={handleRegionMouseDown}
+                            onMouseMove={handleRegionMouseMove}
+                            onMouseUp={handleRegionMouseUp}
+                        >
+                            {selectionStart && selectionCurrent && (
+                                <div
+                                    className="absolute border-2 border-blue-500 bg-blue-500/10 pointer-events-none"
+                                    style={{
+                                        left: Math.min(selectionStart.sx, selectionCurrent.sx),
+                                        top: Math.min(selectionStart.sy, selectionCurrent.sy),
+                                        width: Math.abs(selectionCurrent.sx - selectionStart.sx),
+                                        height: Math.abs(selectionCurrent.sy - selectionStart.sy),
+                                    }}
+                                />
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -243,16 +397,30 @@ export function CanvasArea() {
                 )} />
                 <ZoomBtn
                     icon={isPanMode ? Hand : MousePointer}
-                    onClick={() => setIsPanMode((prev) => !prev)}
-                    title={isPanMode ? 'Pan mode' : 'Select mode'}
+                    onClick={() => {
+                        setIsPanMode((prev) => !prev)
+                        if (isRegionOcrMode) setIsRegionOcrMode(false)
+                    }}
+                    title={isPanMode ? t('canvas.panMode') : t('canvas.selectMode')}
                     active={isPanMode}
+                />
+                <div className={cn(
+                    "w-px h-4 mx-0.5 hidden sm:block",
+                    theme === 'light' ? 'bg-slate-300' : 'bg-white/20'
+                )} />
+                <ZoomBtn
+                    icon={regionOcrStatus === 'processing' ? Loader2 : Crosshair}
+                    onClick={toggleRegionOcrMode}
+                    title={isRegionOcrMode ? t('canvas.regionOcrExit') : t('canvas.regionOcr')}
+                    active={isRegionOcrMode}
+                    spinning={regionOcrStatus === 'processing'}
                 />
             </div>
         </div>
     )
 }
 
-function ZoomBtn({ icon: Icon, onClick, title, active }: { icon: LucideIcon, onClick: () => void, title?: string, active?: boolean }) {
+function ZoomBtn({ icon: Icon, onClick, title, active, spinning }: { icon: LucideIcon, onClick: () => void, title?: string, active?: boolean, spinning?: boolean }) {
     const { theme } = useThemeStore()
     return (
         <button
@@ -266,7 +434,7 @@ function ZoomBtn({ icon: Icon, onClick, title, active }: { icon: LucideIcon, onC
                 active && "text-primary bg-primary/10 hover:bg-primary/20"
             )}
         >
-            <Icon size={16} />
+            <Icon size={16} className={spinning ? 'animate-spin' : undefined} />
         </button>
     )
 }

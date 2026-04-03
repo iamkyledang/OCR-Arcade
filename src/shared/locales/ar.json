@@ -167,7 +167,14 @@
       "ara": "العربية (ara)",
       "tha": "التايلندية (tha)",
       "vie": "الفيتنامية (vie)"
-    }
+    },
+    "advanced": "Advanced",
+    "engineAI": "AI (DBNet)",
+    "engineAIDesc": "Best quality",
+    "engineFast": "Fast (Tesseract)",
+    "engineFastDesc": "Faster, lower quality",
+    "engineMorph": "Morphology",
+    "engineMorphDesc": "Density-based"
   },
   "sidebar": {
     "pages": "الصفحات",
@@ -202,7 +209,10 @@
     "projectExported": "تم تصدير المشروع",
     "projectExportFailed": "فشل تصدير المشروع",
     "projectImported": "تم استيراد المشروع \"{{name}}\"",
-    "projectImportFailed": "فشل الاستيراد. تحقق من الصيغة."
+    "projectImportFailed": "فشل الاستيراد. تحقق من الصيغة.",
+    "regionOcrNoText": "No text found in the selected region",
+    "regionOcrSuccess": "Region OCR: {{count}} text regions found",
+    "regionOcrFail": "Region OCR failed"
   },
   "properties": {
     "title": "الخصائص",
@@ -303,7 +313,11 @@
     "zoomOut": "تصغير (-)",
     "zoomReset": "إعادة الضبط (100%)",
     "zoomIn": "تكبير (+)",
-    "fitScreen": "ملاءمة الشاشة"
+    "fitScreen": "ملاءمة الشاشة",
+    "panMode": "Pan mode",
+    "selectMode": "Select mode",
+    "regionOcr": "Region OCR — draw a rectangle to OCR a specific area",
+    "regionOcrExit": "Exit region OCR mode (Esc)"
   },
   "projects": {
     "title": "إدارة المشاريع",

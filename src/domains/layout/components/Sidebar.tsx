@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 
 export function Sidebar() {
     const { t } = useTranslation()
-    const { pages, currentPageIndex, setCurrentPageIndex, setPageOCRData, isSidebarOverlayMode, ocrLanguage, isSidebarCollapsed, toggleSidebar, markOcrTriggered } = useStore()
+    const { pages, currentPageIndex, setCurrentPageIndex, setPageOCRData, isSidebarOverlayMode, ocrLanguage, ocrSegmentation, isSidebarCollapsed, toggleSidebar, markOcrTriggered } = useStore()
     const { setLoading } = useLoadingStore()
     const { addToast } = useToastStore()
     const { isMobile, isTablet, toggleSidebarOverlay } = useResponsiveLayout()
@@ -39,7 +39,7 @@ export function Sidebar() {
         markOcrTriggered()
 
         try {
-            const words = await imageAnalysisService.processImage(page.imageData, ocrLanguage)
+            const words = await imageAnalysisService.processImage(page.imageData, ocrLanguage, ocrSegmentation)
             setPageOCRData(pageIndex, words)
             addToast(t('toasts.pageOcrDone', { page: pageIndex + 1 }), 'success')
         } catch (e) {
@@ -67,7 +67,7 @@ export function Sidebar() {
             for (let i = 0; i < pages.length; i++) {
                 if (pages[i].ocrData) continue
                 setLoading(true, t('toasts.recognizePage', { current: i + 1, total: pages.length }), (i / pages.length) * 100)
-                const words = await imageAnalysisService.processImage(pages[i].imageData, ocrLanguage)
+                const words = await imageAnalysisService.processImage(pages[i].imageData, ocrLanguage, ocrSegmentation)
                 setPageOCRData(i, words)
             }
             addToast(t('toasts.allDone', { count: pages.length }), 'success')

@@ -2,8 +2,11 @@ import { createWorker, PSM } from 'tesseract.js'
 import type { Worker } from 'tesseract.js'
 import { preprocessImage } from '@/shared/lib/imagePreprocessing'
 import { FoundationMorphology } from '@/domains/ocr/foundations/FoundationMorphology'
+import { FoundationAI } from '@/domains/ocr/foundations/FoundationAI'
+import type { IOcrFoundation } from '@/domains/ocr/foundations/types'
 import { imageUrlToImageData, mergeBoxes, filterContainedBoxes, cropImageByBbox } from './ocrUtils'
 import { useDebugStore } from '@/shared/store/useDebugStore'
+
 
 export type OCRLanguage =
     | 'chi_tra'
@@ -47,6 +50,7 @@ export interface OCRWord {
 export type SegmentationMethod =
     | 'pre-ocr-density' // [Legacy] 先分割再 OCR（實作為 morphology）
     | 'pre-ocr-subregion' // [New] Pre-Seg 子區域遞迴調用（不寫入 Debug Store）
+    | 'pre-ocr-ai' // [New] 使用 DBNet ONNX 進行精準文字檢測
     | 'tesseract';    // Tesseract 內建（原本的流程）
 
 
@@ -88,10 +92,10 @@ export const ocrService = {
         segmentationMethod: SegmentationMethod = 'tesseract',
         onDebugImage?: (dataUrl: string, label: string) => void
     ): Promise<OCRWord[]> {
-        // [Legacy] Pre-OCR Segmentation Flow
+        // [Legacy & AI] Pre-OCR Segmentation Flow
         // Enabled for high accuracy (padding fix implemented)
-        if (segmentationMethod === 'pre-ocr-density') {
-            return this.recognizeWithPreSegmentation(imageData, lang, onDebugImage);
+        if (segmentationMethod === 'pre-ocr-density' || segmentationMethod === 'pre-ocr-ai') {
+            return this.recognizeWithPreSegmentation(imageData, lang, segmentationMethod, onDebugImage);
         }
 
         // 確保 Worker 已初始化
@@ -169,6 +173,7 @@ export const ocrService = {
     async recognizeWithPreSegmentation(
         imageDataUrl: string,
         lang: OCRLanguage,
+        method: 'pre-ocr-density' | 'pre-ocr-ai',
         onDebugImage?: (dataUrl: string, label: string) => void
     ): Promise<OCRWord[]> {
         // Clear Debug Store at start of Pre-Seg
@@ -176,7 +181,7 @@ export const ocrService = {
             useDebugStore.getState().clear();
         } catch (e) { }
 
-        const foundation = new FoundationMorphology();
+        const foundation: IOcrFoundation = method === 'pre-ocr-ai' ? new FoundationAI() : new FoundationMorphology();
 
         // 1. 轉換圖片
         const { imageData, imageElement } = await imageUrlToImageData(imageDataUrl);
@@ -186,8 +191,14 @@ export const ocrService = {
 
         // 3. 優化 (Filter & Merge)
         boxes = boxes.filter(b => b.x1 - b.x0 > 10 && b.y1 - b.y0 > 10);
-        boxes = mergeBoxes(boxes); // Adaptive Merging
-        boxes = filterContainedBoxes(boxes);
+        if (method === 'pre-ocr-ai') {
+            // DBNet 已輸出語意分離的框，mergeBoxes / filterContainedBoxes 都是為
+            // morphology 碎片設計的，對 DBNet 輸出只會造成框數大幅減少。
+            console.log(`[DBNet pipeline] after size filter: ${boxes.length} boxes`);
+        } else {
+            boxes = mergeBoxes(boxes);
+            boxes = filterContainedBoxes(boxes);
+        }
 
         // 4. 迴圈識別 (序列執行)
         const allWords: OCRWord[] = [];
@@ -205,7 +216,7 @@ export const ocrService = {
                 undefined,
                 true,
                 [],
-                { grayscale: true, enhanceContrast: true, binarize: false, denoise: false },
+                { grayscale: true, enhanceContrast: false, binarize: false, denoise: false },
                 'pre-ocr-subregion',
                 onDebugImage
             );
@@ -224,6 +235,12 @@ export const ocrService = {
                 confidence: w.confidence,
                 vertical: isVerticalLanguage(lang) ? true : undefined
             }));
+
+            // Debug: 前 3 個框的輸入/輸出尺寸
+            if (i < 3) {
+                const boxW = box.x1 - box.x0, boxH = box.y1 - box.y0;
+                console.log(`[DBNet box ${i}] DBNet: ${boxW}x${boxH}  Tesseract words: ${subWords.length}`, subWords.slice(0, 2).map(w => `"${w.text.substring(0,8)}" bbox=${w.bbox.x1-w.bbox.x0}x${w.bbox.y1-w.bbox.y0}`));
+            }
 
             allWords.push(...adjustedWords);
 
@@ -249,7 +266,8 @@ export const ocrService = {
         onDebugImage?: (dataUrl: string, label: string) => void,
         isVertical: boolean = false
     ): Promise<OCRWord[]> {
-        void segmentationMethod;
+        // pre-ocr-subregion: DBNet 已確認此為文字區域，信心度閾值可以放寬
+        const isSubRegion = segmentationMethod === 'pre-ocr-subregion';
         // 0. 獲取文字框 (相容 Tesseract.js v7，需要 { blocks: true } 選項)
         let rawWords: any[] = [];
 
@@ -364,8 +382,13 @@ export const ocrService = {
             // 過濾空文字或純空白
             if (!word.text || word.text.trim().length === 0) return false
 
-            // 過濾低信心度結果 (低於 30% 幾乎都是雜訊)
-            if ((word.confidence ?? 0) < 30) return false
+            // 過濾低信心度結果
+            // sub-region 模式：DBNet 已確認此為文字區域，完全跳過信心度過濾
+            //   chi_tra 對技術圖表/小字的信心度天生偏低，但 DBNet 已背書該區域有文字
+            // 全圖模式：30% 以下幾乎都是雜訊
+            if (!isSubRegion) {
+                if ((word.confidence ?? 0) < 30) return false;
+            }
 
             // 過濾極細長的線條
             if (aspectRatio > 20 || aspectRatio < 0.05) return false

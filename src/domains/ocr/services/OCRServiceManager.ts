@@ -6,7 +6,7 @@
  */
 
 import { ocrService } from './ocr';
-import type { OCRLanguage } from './ocr';
+import type { OCRLanguage, SegmentationMethod } from './ocr';
 import { logger } from '@/shared/lib/Logger';
 
 export type OCRServiceStatus = 'idle' | 'initializing' | 'ready' | 'error';
@@ -113,7 +113,7 @@ class OCRServiceManager {
   /**
    * Process image using the managed service
    */
-  async processImage(imageDataUrl: string) {
+  async processImage(imageDataUrl: string, segmentation: SegmentationMethod = 'pre-ocr-ai') {
     if (this.state.status !== 'ready') {
       await this.initialize();
     }
@@ -126,15 +126,15 @@ class OCRServiceManager {
       true,
       [],
       undefined,
-      'tesseract'
+      segmentation
     );
     const processingTime = performance.now() - startTime;
 
     return {
       words,
       processingTime,
-      engineUsed: 'tesseract',
-      executionProvider: 'wasm' as const
+      engineUsed: 'pre-ocr-ai' as const,
+      executionProvider: 'webgl-wasm-fallback' as const
     };
   }
 

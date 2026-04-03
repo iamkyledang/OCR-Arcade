@@ -1,6 +1,6 @@
 import { ImageAnalyzer } from './imageAnalyzer';
 import { ocrServiceManager } from './OCRServiceManager';
-import type { OCRWord, OCRLanguage } from './ocr';
+import type { OCRWord, OCRLanguage, SegmentationMethod } from './ocr';
 
 
 export class ImageAnalysisFacade {
@@ -10,7 +10,7 @@ export class ImageAnalysisFacade {
         this.analyzer = new ImageAnalyzer();
     }
 
-    public async processImage(imageDataUrl: string, language: OCRLanguage = 'chi_tra'): Promise<OCRWord[]> {
+    public async processImage(imageDataUrl: string, language: OCRLanguage = 'chi_tra', segmentation: SegmentationMethod = 'pre-ocr-ai'): Promise<OCRWord[]> {
         // const store = useStore.getState();
 
         // Convert Data URL to ImageData for analysis
@@ -22,7 +22,7 @@ export class ImageAnalysisFacade {
         // Use the managed OCR service for optimal performance
         try {
             ocrServiceManager.updateConfig({ language });
-            const result = await ocrServiceManager.processImage(imageDataUrl);
+            const result = await ocrServiceManager.processImage(imageDataUrl, segmentation);
             return result.words;
         } catch (error) {
             throw error; // Propagate error directly without fallback
