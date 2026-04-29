@@ -48,6 +48,32 @@
       "inLanguage": "en"
     }
   </script>
+
+  <!-- Register COI service worker so SharedArrayBuffer is available on static hosts
+       (GitHub Pages does not support custom response headers, so we use a service worker
+       to inject Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy headers,
+       which are required for ONNX Runtime multi-threading.) -->
+  <script>
+    if (!window.crossOriginIsolated && "serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("coi-serviceworker.js")
+        .then(function (registration) {
+          var sw = registration.installing || registration.waiting;
+          if (sw) {
+            sw.addEventListener("statechange", function (event) {
+              if (event.target.state === "activated") {
+                window.location.reload();
+              }
+            });
+          } else if (registration.active) {
+            window.location.reload();
+          }
+        })
+        .catch(function (err) {
+          console.warn("COI service worker registration failed:", err);
+        });
+    }
+  </script>
 </head>
 
 <body>
